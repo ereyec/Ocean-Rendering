@@ -1,0 +1,49 @@
+#version 460 core
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(binding = 4, rgba32f) uniform image2D waveHeight; 
+layout(binding = 5, rgba32f) uniform image2D wavedx;
+layout(binding = 6, rgba32f) uniform image2D wavedy;
+
+struct Vertex{
+   vec4 position;
+   vec4 normal;
+};
+
+layout (std430, binding = 0) buffer Vertices{
+   Vertex vertices[];
+};
+
+void main(){
+   int N = 512;
+   uint x = gl_GlobalInvocationID.x;
+   uint y = gl_GlobalInvocationID.y;
+   
+   float Ay = (50*imageLoad(waveHeight, ivec2(x,y)).x + 0.5);  
+   float By = (50*imageLoad(waveHeight, ivec2(x + 1,y)).x + 0.5);
+   float Cy = (50*imageLoad(waveHeight, ivec2(x,y + 1)).x + 0.5);
+   float Dy = (50*imageLoad(waveHeight, ivec2(x + 1,y + 1)).x + 0.5);
+
+   vec3 An = normalize(vec3(-(imageLoad(wavedx, ivec2(x,y)).x*1000+0.5), 1, -(imageLoad(wavedy, ivec2(x,y)).x*1000+0.5)));
+   vec3 Bn = normalize(vec3(-(imageLoad(wavedx, ivec2(x+1,y)).x*1000+0.5), 1, -(imageLoad(wavedy, ivec2(x+1,y)).x*1000+0.5)));
+   vec3 Cn = normalize(vec3(-(imageLoad(wavedx, ivec2(x,y+1)).x*1000+0.5), 1, -(imageLoad(wavedy, ivec2(x,y+1)).x*1000+0.5)));
+   vec3 Dn = normalize(vec3(-(imageLoad(wavedx, ivec2(x+1,y+1)).x*1000+0.5), 1, -(imageLoad(wavedy, ivec2(x+1,y+1)).x*1000+0.5)));
+
+   uint baseIndex  = (y * (N-1) + x) * 6;
+   float w = 0; //padding
+   float wn = 0; //padding
+
+   vertices[baseIndex + 0].position = vec4(x/10.0, Ay, y/10.0, w);
+   vertices[baseIndex + 0].normal = vec4(An, 0);
+   vertices[baseIndex + 1].position = vec4(x / 10.0 + 0.1, By, y / 10.0, w);
+   vertices[baseIndex + 1].normal = vec4(Bn, 0);
+   vertices[baseIndex + 2].position = vec4(x / 10.0, Cy, y / 10.0 + 0.1, w);
+   vertices[baseIndex + 2].normal = vec4(Cn, 0);
+
+   vertices[baseIndex + 3].position = vec4(x / 10.0 + 0.1, By, y / 10.0, w);
+   vertices[baseIndex + 3].normal = vec4(Bn, 0);
+   vertices[baseIndex + 4].position = vec4(x / 10.0, Cy, y / 10.0 + 0.1, w);
+   vertices[baseIndex + 4].normal = vec4(Cn, 0);
+   vertices[baseIndex + 5].position = vec4(x / 10.0 + 0.1, Dy, y / 10.0 + 0.1, w);
+   vertices[baseIndex + 5].normal = vec4(Dn, 0);
+
+}

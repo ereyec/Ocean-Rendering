@@ -1,0 +1,46 @@
+//Fwavedx
+#version 460 core
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(binding = 0, rgba32f) uniform image2D phillipsSpectrum;
+layout(binding = 2, rgba32f) uniform image2D Fwavedx;
+layout(binding = 3, rgba32f) uniform image2D Fwavedy;
+uniform float time;
+
+#define PI 3.14159265
+
+vec2 complexMultiply(vec2 u, vec2 v)
+{
+    return vec2(u.x * v.x - v.y * u.y, v.x * u.y + v.y * u.x);
+}
+
+void main(){
+   float L_x = 1000;
+   float V = 31;
+   float l = 0.01;
+   float A = 0.0081;
+   float g = 9.81;
+   float L = V*V/g;
+
+   //OPTIMIZED 1:
+   uint x = gl_GlobalInvocationID.x;
+   uint y = gl_GlobalInvocationID.y;
+   float n = float(x)-256.0;
+         float m = float(y)-256.0;
+         vec2 k = vec2(2*PI*n/L_x, 2*PI*m/L_x);
+         float wavenum = length(k);
+
+         float omega = sqrt(wavenum * g);
+         vec2 h0bar = imageLoad(phillipsSpectrum, ivec2(x,y)).xy;
+         vec2 h0bar_conj = imageLoad(phillipsSpectrum, ivec2(511- x,511 - y)).xy;
+         vec2 expiwt = vec2(cos(omega * time), sin(omega * time));   
+         vec2 expniwt = vec2(cos(-omega * time), sin(-omega * time));
+
+         vec2 hbar = complexMultiply(h0bar, expiwt) + complexMultiply(h0bar_conj, expniwt);
+         
+         vec2 hdx = k.x * vec2(-hbar.y, hbar.x);
+         vec2 hdy = k.y * vec2(-hbar.y, hbar.x);
+
+         imageStore(Fwavedx, ivec2(x,y), vec4(hdx.x, hdx.y, 0.0, 1.0));
+         imageStore(Fwavedy, ivec2(x,y), vec4(hdy.x, hdy.y, 0.0, 1.0));
+
+}

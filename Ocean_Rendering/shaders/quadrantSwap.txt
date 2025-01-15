@@ -1,0 +1,20 @@
+#version 460 core
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(binding = 1, rgba32f) uniform image2D spectrumTexture;
+
+void main(){   
+   uint x = gl_GlobalInvocationID.x;
+   uint y = gl_GlobalInvocationID.y;
+   
+   int xqs = (int(x)-256+512)%512;
+   int yqs = (int(y)-256+512)%512;
+
+   vec4 i = imageLoad(spectrumTexture, ivec2(x,y));
+   vec4 j = imageLoad(spectrumTexture, ivec2(xqs,yqs));
+
+   imageStore(spectrumTexture, ivec2(x,y), j); //j
+   imageStore(spectrumTexture, ivec2(xqs,yqs), i); //i
+
+}
+
+

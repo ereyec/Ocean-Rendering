@@ -1,0 +1,31 @@
+#version 460 core
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(binding = 4, rgba32f) uniform image2D waveHeight;
+layout(binding = 5, rgba32f) uniform image2D wavedx;
+layout(binding = 6, rgba32f) uniform image2D wavedy;
+
+
+//Copy the entire first row of the image to the entire last row. 
+//Then copy the entire first column of the image to the entire last column. 
+void main(){
+   vec4 src;
+
+   uint x = gl_GlobalInvocationID.x;
+   uint y = gl_GlobalInvocationID.x;
+
+   src = imageLoad(waveHeight, ivec2(x, 0)); 
+   imageStore(waveHeight, ivec2(x, 511), src); 
+   src = imageLoad(waveHeight, ivec2(0, y)); 
+   imageStore(waveHeight, ivec2(511, y), src); 
+
+   src = imageLoad(wavedx, ivec2(x, 0)); 
+   imageStore(wavedx, ivec2(x, 511), src); 
+   src = imageLoad(wavedx, ivec2(0, y)); 
+   imageStore(wavedx, ivec2(511, y), src); 
+
+   src = imageLoad(wavedy, ivec2(x, 0)); 
+   imageStore(wavedy, ivec2(x, 511), src); 
+   src = imageLoad(wavedy, ivec2(0, y)); 
+   imageStore(wavedy, ivec2(511, y), src); 
+
+}

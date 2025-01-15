@@ -1,0 +1,190 @@
+#version 460 core
+layout(local_size_x = 1, local_size_y = 1, local_size_z = 1) in;
+layout(binding = 1, rgba32f) uniform image2D Fwaveheight;
+layout(binding = 2, rgba32f) uniform image2D Fwavedx;
+layout(binding = 3, rgba32f) uniform image2D Fwavedy;
+
+#define PI 3.14159265358
+
+void swapFwaveheight(int i, int j) //Swap values of inputImage
+{
+    ivec2 ind_i = ivec2(gl_GlobalInvocationID.x, i);
+    ivec2 ind_j = ivec2(gl_GlobalInvocationID.x, j);
+    vec4 ai = imageLoad(Fwaveheight, ind_i);
+    vec4 aj = imageLoad(Fwaveheight, ind_j);
+    imageStore(Fwaveheight, ind_i, aj);
+    imageStore(Fwaveheight, ind_j, ai);
+}
+void swapFwavedx(int i, int j) //Swap values of inputImage
+{
+    ivec2 ind_i = ivec2(gl_GlobalInvocationID.x, i);
+    ivec2 ind_j = ivec2(gl_GlobalInvocationID.x, j);
+    vec4 ai = imageLoad(Fwavedx, ind_i);
+    vec4 aj = imageLoad(Fwavedx, ind_j);
+    imageStore(Fwavedx, ind_i, aj);
+    imageStore(Fwavedx, ind_j, ai);
+}
+void swapFwavedy(int i, int j) //Swap values of inputImage
+{
+    ivec2 ind_i = ivec2(gl_GlobalInvocationID.x, i);
+    ivec2 ind_j = ivec2(gl_GlobalInvocationID.x, j);
+    vec4 ai = imageLoad(Fwavedy, ind_i);
+    vec4 aj = imageLoad(Fwavedy, ind_j);
+    imageStore(Fwavedy, ind_i, aj);
+    imageStore(Fwavedy, ind_j, ai);
+}
+
+vec2 complexMultiply(vec2 u, vec2 v)
+{
+    return vec2(u.x * v.x - v.y * u.y, v.x * u.y + v.y * u.x);
+}
+vec2 AiFwaveheight(int i) //Retrieve value vec2 from inputImage
+{
+    ivec2 idx = ivec2(gl_GlobalInvocationID.x, i); //Potential problem: flipped y values.     
+    vec4 val = imageLoad(Fwaveheight, idx);
+    return vec2(val.xy);
+}
+vec2 AiFwavedx(int i) //Retrieve value vec2 from inputImage
+{
+    ivec2 idx = ivec2(gl_GlobalInvocationID.x, i); //Potential problem: flipped y values.     
+    vec4 val = imageLoad(Fwavedx, idx);
+    return vec2(val.xy);
+}
+vec2 AiFwavedy(int i) //Retrieve value vec2 from inputImage
+{
+    ivec2 idx = ivec2(gl_GlobalInvocationID.x, i); //Potential problem: flipped y values.     
+    vec4 val = imageLoad(Fwavedy, idx);
+    return vec2(val.xy);
+}
+
+void AiwriteFwaveheight(int i, vec2 val) //write a value vec2 to inputImage
+{
+    ivec2 idx = ivec2(gl_GlobalInvocationID.x, i);
+    vec4 writingValue = vec4(val, 0.0, 1.0);
+    imageStore(Fwaveheight, idx, writingValue);
+}
+void AiwriteFwavedx(int i, vec2 val) //write a value vec2 to inputImage
+{
+    ivec2 idx = ivec2(gl_GlobalInvocationID.x, i);
+    vec4 writingValue = vec4(val, 0.0, 1.0);
+    imageStore(Fwavedx, idx, writingValue);
+}
+void AiwriteFwavedy(int i, vec2 val) //write a value vec2 to inputImage
+{
+    ivec2 idx = ivec2(gl_GlobalInvocationID.x, i);
+    vec4 writingValue = vec4(val, 0.0, 1.0);
+    imageStore(Fwavedy, idx, writingValue);
+}
+
+void iterative_fftFwaveheight(bool invert) {
+    int n = 512;
+    // Bit-reversal permutation
+    for (int i = 1, j = 0; i < n; ++i) {
+        int bit = n >> 1;
+        while (j >= bit) {
+            j -= bit;
+            bit = bit >> 1;
+        }
+        j += bit;
+        if (i < j) {
+            swapFwaveheight(i, j);
+        }
+    }
+    // Iterative FFT
+    for (int len = 2; len <= n; len = len << 1) {
+        float ang = 2 * PI / len; //IFFT 
+        vec2 wn = vec2(cos(ang), sin(ang));
+        for (int i = 0; i < n; i += len) {
+            vec2 w = vec2(1.0, 0.0);
+            for (int j = 0; j < len / 2; ++j) {
+                vec2 u = AiFwaveheight(i + j);
+                vec2 v = complexMultiply(AiFwaveheight(i + j + len / 2), w);
+                AiwriteFwaveheight(i + j, u + v);
+                AiwriteFwaveheight(i + j + len / 2, u - v);
+                w = complexMultiply(w, wn);
+            }
+        }
+    }
+}
+void iterative_fftFwavedx(bool invert) {
+    int n = 512;
+    // Bit-reversal permutation
+    for (int i = 1, j = 0; i < n; ++i) {
+        int bit = n >> 1;
+        while (j >= bit) {
+            j -= bit;
+            bit = bit >> 1;
+        }
+        j += bit;
+        if (i < j) {
+            swapFwavedx(i, j);
+        }
+    }
+    // Iterative FFT
+    for (int len = 2; len <= n; len = len << 1) {
+        float ang = 2 * PI / len; //IFFT 
+        vec2 wn = vec2(cos(ang), sin(ang));
+        for (int i = 0; i < n; i += len) {
+            vec2 w = vec2(1.0, 0.0);
+            for (int j = 0; j < len / 2; ++j) {
+                vec2 u = AiFwavedx(i + j);
+                vec2 v = complexMultiply(AiFwavedx(i + j + len / 2), w);
+                AiwriteFwavedx(i + j, u + v);
+                AiwriteFwavedx(i + j + len / 2, u - v);
+                w = complexMultiply(w, wn);
+            }
+        }
+    }
+}
+void iterative_fftFwavedy(bool invert) {
+    int n = 512;
+    // Bit-reversal permutation
+    for (int i = 1, j = 0; i < n; ++i) {
+        int bit = n >> 1;
+        while (j >= bit) {
+            j -= bit;
+            bit = bit >> 1;
+        }
+        j += bit;
+        if (i < j) {
+            swapFwavedy(i, j);
+        }
+    }
+    // Iterative FFT
+    for (int len = 2; len <= n; len = len << 1) {
+        float ang = 2 * PI / len; //IFFT 
+        vec2 wn = vec2(cos(ang), sin(ang));
+        for (int i = 0; i < n; i += len) {
+            vec2 w = vec2(1.0, 0.0);
+            for (int j = 0; j < len / 2; ++j) {
+                vec2 u = AiFwavedy(i + j);
+                vec2 v = complexMultiply(AiFwavedy(i + j + len / 2), w);
+                AiwriteFwavedy(i + j, u + v);
+                AiwriteFwavedy(i + j + len / 2, u - v);
+                w = complexMultiply(w, wn);
+            }
+        }
+    }
+}
+
+
+void main()
+{
+   iterative_fftFwaveheight(true);
+   iterative_fftFwavedx(true);
+   iterative_fftFwavedy(true);
+// If we're doing an inverse FFT, divide by n
+   for(int y = 0; y < 512; y++){
+      vec4 val = imageLoad(Fwaveheight, ivec2(gl_GlobalInvocationID.x, y));
+      imageStore(Fwaveheight, ivec2(gl_GlobalInvocationID.x, y), val / 512.0);
+   }
+for(int y = 0; y < 512; y++){
+      vec4 val = imageLoad(Fwavedx, ivec2(gl_GlobalInvocationID.x, y));
+      imageStore(Fwavedx, ivec2(gl_GlobalInvocationID.x, y), val / 512.0);
+   }
+for(int y = 0; y < 512; y++){
+      vec4 val = imageLoad(Fwavedy, ivec2(gl_GlobalInvocationID.x, y));
+      imageStore(Fwavedy, ivec2(gl_GlobalInvocationID.x, y), val / 512.0);
+   }
+
+}
